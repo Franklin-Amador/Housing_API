@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+mls/
+venv/
+env/
+ENV/
+
+# Environment Variables
+.env
+.env.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Model files (ya están en Blob Storage)
+*.pkl
+*.joblib
+*.h5
+
+# Data files
+*.csv
+*.xlsx
+data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+test_client.py
+upload_to_blob.py
+
+# Logs
+*.log

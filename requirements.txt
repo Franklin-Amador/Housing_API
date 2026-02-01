@@ -1,0 +1,20 @@
+# Web Framework
+fastapi==0.128.0
+uvicorn[standard]==0.40.0
+
+# Data Validation
+pydantic==2.7.0
+
+# Machine Learning & Data Processing
+numpy==2.4.1
+pandas==3.0.0
+scikit-learn==1.7.2
+
+# Model Serialization
+dill==0.4.1
+
+# HTTP Requests (para descargar desde Blob)
+requests==2.31.0
+
+# Environment Variables
+python-dotenv==1.0.0
