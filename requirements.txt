@@ -4,8 +4,9 @@ fastapi[standard]==0.128.0
 # Data Validation
 pydantic==2.7.0
 
-# Data Processing (necesario para que el modelo funcione)
-pandas==2.0.3
+# Data Processing - VERSIONES COMPATIBLES
+numpy==1.26.4
+pandas==2.1.4
 
 # Serializaci\u00f3n (compatible con el modelo entrenado)
 dill==0.4.1
