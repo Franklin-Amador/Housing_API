@@ -1,7 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 import dill
-import numpy as np
 import pandas as pd
 from typing import List, Optional
 import uvicorn

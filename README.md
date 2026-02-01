@@ -2,14 +2,46 @@
 
 API de predicción de precios de viviendas en California usando FastAPI y scikit-learn.
 
-## 🚀 Despliegue en Vercel
+## ⚠️ Importante: Despliegue
 
-Este proyecto está listo para desplegarse en Vercel:
+**Vercel no es ideal para ML** debido a limitaciones de tamaño (250 MB max). Recomendamos:
 
-1. Sube el código a GitHub
-2. Importa el repositorio en Vercel
-3. Configura la variable de entorno (opcional, ya que usamos URL pública del blob)
-4. Despliega
+### Opción 1: Railway.app (RECOMENDADO) 🚂
+```bash
+# 1. Instalar Railway CLI
+npm i -g @railway/cli
+
+# 2. Login
+railway login
+
+# 3. Desplegar
+railway up
+```
+- ✅ Soporte completo para Python/ML
+- ✅ 500MB RAM gratis
+- ✅ Muy fácil de usar
+
+### Opción 2: Render.com 🎨
+1. Ve a https://render.com
+2. Conecta tu repo de GitHub
+3. Selecciona "Web Service"
+4. Render detectará automáticamente el `requirements.txt`
+5. Deploy!
+
+### Opción 3: Fly.io 🪂
+```bash
+# 1. Instalar Fly CLI
+curl -L https://fly.io/install.sh | sh
+
+# 2. Login
+fly auth login
+
+# 3. Lanzar app
+fly launch
+
+# 4. Desplegar
+fly deploy
+```
 
 ## 📦 Modelo
 
