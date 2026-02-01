@@ -18,7 +18,7 @@ class VercelBlobStorage:
         Args:
             token: Token BLOB_READ_WRITE_TOKEN (opcional, no necesario para URLs públicas)
         """
-        self.token = token or os.getenv("BLOB_READ_WRITE_TOKEN", "")
+        self.token = token or ""
         
     def download_file(self, blob_url: str) -> bytes:
         """

@@ -1,11 +1,10 @@
-# Web Framework
-fastapi==0.128.0
-uvicorn==0.40.0
+# Web Framework (uvicorn incluido)
+fastapi[standard]==0.128.0
 
 # Data Validation
 pydantic==2.7.0
 
-# Machine Learning (numpy viene incluido automáticamente)
+# Machine Learning (numpy incluido automáticamente)
 pandas==2.0.3
 scikit-learn==1.3.0
 
@@ -14,6 +13,3 @@ dill==0.4.1
 
 # HTTP Requests (para descargar desde Blob)
 requests==2.31.0
-
-# Environment Variables
-python-dotenv==1.0.0

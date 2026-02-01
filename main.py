@@ -3,7 +3,6 @@ from pydantic import BaseModel, Field
 import dill
 import pandas as pd
 from typing import List, Optional
-import uvicorn
 import os
 
 # Imports necesarios para que dill deserialice correctamente
@@ -293,13 +292,3 @@ async def batch_predict(request: BatchPredictionRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error en predicción batch: {str(e)}")
-
-
-# Para ejecutar la aplicación
-if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",  # Cambia "main" por el nombre de tu archivo
-        host="0.0.0.0",
-        port=8000,
-        reload=True  # Auto-reload en desarrollo
-    )
