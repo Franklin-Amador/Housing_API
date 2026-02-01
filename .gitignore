@@ -29,6 +29,7 @@ ENV/
 # Data files
 *.csv
 *.xlsx
+*.onnx
 data/
 
 # OS

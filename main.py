@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-import dill
-import pandas as pd
+import onnxruntime as ort
+import numpy as np
 from typing import List, Optional
 import os
 
@@ -11,44 +11,52 @@ from blob_storage import get_blob_storage
 # Inicializar FastAPI
 app = FastAPI(
     title="California Housing Price Predictor",
-    description="API para prediccion de precios de viviendas usando el modelo del capitulo 2",
-    version="1.0.0"
+    description="API para prediccion de precios de viviendas (ONNX optimizado)",
+    version="2.0.0"
 )
 
 # Configuración de rutas
-MODEL_BLOB_URL = "https://vjrbqsew9s3w1szr.public.blob.vercel-storage.com/model_sklearn_1_7_2.pkl"
-MODEL_LOCAL_PATH = "/tmp/model_sklearn_1_7_2.pkl"
+MODEL_BLOB_URL = "https://vjrbqsew9s3w1szr.public.blob.vercel-storage.com/model.onnx"
+MODEL_LOCAL_PATH = "/tmp/model.onnx"
 
-# Variable global para almacenar el modelo cargado
-model = None
+# Variable global para almacenar la sesión ONNX
+ort_session = None
 
 def load_model():
-    """Carga el modelo desde Vercel Blob"""
-    global model
+    """Carga el modelo ONNX desde Vercel Blob"""
+    global ort_session
     
     try:
-        print("Cargando modelo...")
+        print("Cargando modelo ONNX...")
         blob_storage = get_blob_storage()
         blob_content = blob_storage.download_file(MODEL_BLOB_URL)
         
-        # Guardar temporalmente para desserializar
+        # Guardar temporalmente
         os.makedirs(os.path.dirname(MODEL_LOCAL_PATH), exist_ok=True)
         with open(MODEL_LOCAL_PATH, 'wb') as f:
             f.write(blob_content)
         
-        with open(MODEL_LOCAL_PATH, 'rb') as f:
-            model = dill.load(f)
+        # Crear sesión ONNX
+        ort_session = ort.InferenceSession(MODEL_LOCAL_PATH)
         
-        print("Modelo cargado correctamente")
-        return model
+        print("Modelo ONNX cargado correctamente")
+        return ort_session
             
     except Exception as e:
         print(f"Error al cargar modelo: {e}")
         return None
 
 # Cargar modelo al iniciar
-model = load_model()
+ort_session = load_model()
 
+# Mapeo de ocean_proximity a valores
+OCEAN_PROXIMITY_MAP = {
+    "INLAND": 0,
+    "NEAR BAY": 1,
+    "NEAR OCEAN": 2,
+    "<1H OCEAN": 3,
+    "ISLAND": 4
+}
 
 # Modelos de datos con Pydantic
 class HousingFeatures(BaseModel):
@@ -102,8 +110,9 @@ class BatchPredictionResponse(BaseModel):
 async def root():
     """Endpoint raiz con informacion de la API"""
     return {
-        "message": "API de Prediccion de Precios de Viviendas",
-        "status": "active" if model is not None else "model not loaded",
+        "message": "API de Prediccion de Precios de Viviendas (ONNX)",
+        "status": "active" if ort_session is not None else "model not loaded",
+        "model_format": "ONNX",
         "endpoints": {
             "health": "/health",
             "predict": "/predict",
@@ -117,61 +126,55 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Verifica el estado de la API y el modelo"""
-    if model is None:
+    if ort_session is None:
         raise HTTPException(status_code=503, detail="Modelo no cargado")
     
     return {
         "status": "healthy",
         "model_loaded": True,
-        "model_type": str(type(model).__name__)
+        "model_type": "ONNX Runtime"
     }
 
 
 @app.get("/model-info")
 async def model_info():
     """Informacion sobre el modelo cargado"""
-    if model is None:
+    if ort_session is None:
         raise HTTPException(status_code=503, detail="Modelo no cargado")
     
-    info = {
-        "model_type": str(type(model).__name__),
-        "model_class": str(type(model))
+    inputs = ort_session.get_inputs()
+    outputs = ort_session.get_outputs()
+    
+    return {
+        "model_type": "ONNX",
+        "inputs": [{"name": inp.name, "type": str(inp.type), "shape": inp.shape} for inp in inputs],
+        "outputs": [{"name": out.name, "type": str(out.type), "shape": out.shape} for out in outputs]
     }
-    
-    if hasattr(model, 'get_params'):
-        info["parameters"] = model.get_params()
-    
-    if hasattr(model, 'feature_names_in_'):
-        info["features"] = list(model.feature_names_in_)
-    
-    return info
 
 
 @app.post("/predict", response_model=PredictionResponse)
 async def predict(features: HousingFeatures):
     """Realiza una prediccion individual del precio de vivienda"""
-    if model is None:
+    if ort_session is None:
         raise HTTPException(status_code=503, detail="Modelo no cargado")
     
     try:
-        # Preparar datos como DataFrame con nombres de columnas
-        data = {
-            'longitude': [features.longitude],
-            'latitude': [features.latitude],
-            'housing_median_age': [features.housing_median_age],
-            'total_rooms': [features.total_rooms],
-            'total_bedrooms': [features.total_bedrooms],
-            'population': [features.population],
-            'households': [features.households],
-            'median_income': [features.median_income],
-            'ocean_proximity': [features.ocean_proximity if features.ocean_proximity else "INLAND"]
+        # Preparar inputs para ONNX (como arrays numpy individuales)
+        input_data = {
+            'longitude': np.array([[features.longitude]], dtype=np.float32),
+            'latitude': np.array([[features.latitude]], dtype=np.float32),
+            'housing_median_age': np.array([[features.housing_median_age]], dtype=np.float32),
+            'total_rooms': np.array([[features.total_rooms]], dtype=np.float32),
+            'total_bedrooms': np.array([[features.total_bedrooms]], dtype=np.float32),
+            'population': np.array([[features.population]], dtype=np.float32),
+            'households': np.array([[features.households]], dtype=np.float32),
+            'median_income': np.array([[features.median_income]], dtype=np.float32),
+            'ocean_proximity': np.array([[features.ocean_proximity or "INLAND"]], dtype=object)
         }
         
-        X = pd.DataFrame(data)
-        
-        # Hacer prediccion
-        prediction = model.predict(X)
-        predicted_price = float(prediction[0])
+        # Hacer prediccion con ONNX
+        outputs = ort_session.run(None, input_data)
+        predicted_price = float(outputs[0][0][0])
         
         # Calcular rango estimado (+-10%)
         prediction_range = {
@@ -182,7 +185,7 @@ async def predict(features: HousingFeatures):
         return PredictionResponse(
             predicted_price=predicted_price,
             prediction_range=prediction_range,
-            message="Prediccion exitosa"
+            message="Prediccion exitosa (ONNX)"
         )
         
     except Exception as e:
@@ -192,41 +195,32 @@ async def predict(features: HousingFeatures):
 @app.post("/batch-predict", response_model=BatchPredictionResponse)
 async def batch_predict(request: BatchPredictionRequest):
     """Realiza predicciones en batch (multiples instancias)"""
-    if model is None:
+    if ort_session is None:
         raise HTTPException(status_code=503, detail="Modelo no cargado")
     
     try:
-        # Preparar datos como DataFrame con nombres de columnas
-        data = {
-            'longitude': [],
-            'latitude': [],
-            'housing_median_age': [],
-            'total_rooms': [],
-            'total_bedrooms': [],
-            'population': [],
-            'households': [],
-            'median_income': [],
-            'ocean_proximity': []
-        }
+        predictions = []
         
         for features in request.instances:
-            data['longitude'].append(features.longitude)
-            data['latitude'].append(features.latitude)
-            data['housing_median_age'].append(features.housing_median_age)
-            data['total_rooms'].append(features.total_rooms)
-            data['total_bedrooms'].append(features.total_bedrooms)
-            data['population'].append(features.population)
-            data['households'].append(features.households)
-            data['median_income'].append(features.median_income)
-            data['ocean_proximity'].append(features.ocean_proximity if features.ocean_proximity else "INLAND")
-        
-        X = pd.DataFrame(data)
-        
-        # Hacer predicciones
-        predictions = model.predict(X)
+            # Preparar inputs para ONNX
+            input_data = {
+                'longitude': np.array([[features.longitude]], dtype=np.float32),
+                'latitude': np.array([[features.latitude]], dtype=np.float32),
+                'housing_median_age': np.array([[features.housing_median_age]], dtype=np.float32),
+                'total_rooms': np.array([[features.total_rooms]], dtype=np.float32),
+                'total_bedrooms': np.array([[features.total_bedrooms]], dtype=np.float32),
+                'population': np.array([[features.population]], dtype=np.float32),
+                'households': np.array([[features.households]], dtype=np.float32),
+                'median_income': np.array([[features.median_income]], dtype=np.float32),
+                'ocean_proximity': np.array([[features.ocean_proximity or "INLAND"]], dtype=object)
+            }
+            
+            # Hacer prediccion
+            outputs = ort_session.run(None, input_data)
+            predictions.append(float(outputs[0][0][0]))
         
         return BatchPredictionResponse(
-            predictions=[float(p) for p in predictions],
+            predictions=predictions,
             count=len(predictions)
         )
         

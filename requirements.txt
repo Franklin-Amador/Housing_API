@@ -1,18 +1,12 @@
 # Web Framework (uvicorn incluido)
 fastapi[standard]==0.128.0
 
-# Data Validation
-pydantic==2.7.0
+# Data Validation (actualizado para Python 3.13)
+pydantic==2.10.5
 
-# Data Processing - VERSIONES COMPATIBLES
+# ONNX Runtime (reemplaza scikit-learn - MUCHO más ligero)
+onnxruntime==1.23.2
 numpy==1.26.4
-pandas==2.1.4
-
-# Serializaci\u00f3n (compatible con el modelo entrenado)
-dill==0.4.1
-
-# Machine Learning (misma versi\u00f3n que el entrenamiento)
-scikit-learn==1.7.2
 
 # HTTP Requests
 requests==2.31.0
