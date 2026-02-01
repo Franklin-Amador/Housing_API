@@ -4,10 +4,11 @@ FROM python:3.11-slim
 # Configurar directorio de trabajo
 WORKDIR /app
 
-# Instalar dependencias del sistema necesarias para compilar numpy/pandas
+# Instalar dependencias del sistema necesarias para compilar numpy/pandas/sklearn
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements primero (para aprovechar cache de Docker)
