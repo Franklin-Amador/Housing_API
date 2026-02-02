@@ -5,9 +5,13 @@ import onnxruntime as ort
 import numpy as np
 from typing import List, Optional
 import os
+import dotenv
 
 # Importar el módulo de Vercel Blob
-from blob_storage import get_blob_storage
+from blob_storage import get_blob_storage, build_public_url
+
+# Cargar variables de entorno desde .env (local)
+dotenv.load_dotenv()
 
 # Inicializar FastAPI
 app = FastAPI(
@@ -25,9 +29,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configuración de rutas
-MODEL_BLOB_URL = "https://vjrbqsew9s3w1szr.public.blob.vercel-storage.com/model.onnx"
-MODEL_LOCAL_PATH = "/tmp/model.onnx"
+BLOB_PUBLIC_BASE_URL = os.getenv("BLOB_PUBLIC_BASE_URL", "").strip()
+BLOB_MODEL_PATH = os.getenv("BLOB_MODEL_PATH", "model.onnx").strip()
+MODEL_BLOB_URL = os.getenv("MODEL_BLOB_URL", "").strip()
+MODEL_LOCAL_PATH = os.getenv("MODEL_TMP_PATH", "/tmp/model.onnx").strip()
+
+if not MODEL_BLOB_URL and BLOB_PUBLIC_BASE_URL:
+    MODEL_BLOB_URL = build_public_url(BLOB_PUBLIC_BASE_URL, BLOB_MODEL_PATH)
 
 # Variable global para almacenar la sesión ONNX
 ort_session = None
@@ -38,6 +46,9 @@ def load_model():
     
     try:
         print("Cargando modelo ONNX...")
+        if not MODEL_BLOB_URL:
+            raise ValueError("MODEL_BLOB_URL no está configurada. Define BLOB_PUBLIC_BASE_URL o MODEL_BLOB_URL.")
+
         blob_storage = get_blob_storage()
         blob_content = blob_storage.download_file(MODEL_BLOB_URL)
         

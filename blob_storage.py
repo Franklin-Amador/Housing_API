@@ -2,10 +2,9 @@
 Módulo para manejar descargas desde Vercel Blob Storage
 """
 
-import os
 import io
 import requests
-from typing import BinaryIO, Optional
+from typing import Optional
 from urllib.parse import urljoin
 
 class VercelBlobStorage:
@@ -71,3 +70,20 @@ class VercelBlobStorage:
 def get_blob_storage() -> VercelBlobStorage:
     """Factory function para obtener la instancia del storage"""
     return VercelBlobStorage()
+
+
+def build_public_url(base_url: str, blob_pathname: str) -> str:
+    """
+    Construye la URL pública completa para un archivo en Vercel Blob.
+
+    Args:
+        base_url: URL base pública del bucket (ej: 'https://xxx.public.blob.vercel-storage.com/')
+        blob_pathname: Ruta del archivo (ej: 'model.onnx')
+
+    Returns:
+        URL completa del archivo
+    """
+    if not base_url:
+        raise ValueError("base_url es requerido para construir la URL pública")
+    base = base_url if base_url.endswith("/") else f"{base_url}/"
+    return urljoin(base, blob_pathname.lstrip("/"))
