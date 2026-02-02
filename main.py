@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import onnxruntime as ort
 import numpy as np
@@ -13,6 +14,15 @@ app = FastAPI(
     title="California Housing Price Predictor",
     description="API para prediccion de precios de viviendas (ONNX optimizado)",
     version="2.0.0"
+)
+
+# Configuración de CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Configuración de rutas
