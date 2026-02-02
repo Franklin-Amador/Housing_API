@@ -29,13 +29,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Cargar variables de entorno con prioridad
 BLOB_PUBLIC_BASE_URL = os.getenv("BLOB_PUBLIC_BASE_URL", "").strip()
+BLOB_PUBLIC = os.getenv("BLOB_PUBLIC", "").strip()  # Alias alternativo
 BLOB_MODEL_PATH = os.getenv("BLOB_MODEL_PATH", "model.onnx").strip()
 MODEL_BLOB_URL = os.getenv("MODEL_BLOB_URL", "").strip()
 MODEL_LOCAL_PATH = os.getenv("MODEL_TMP_PATH", "/tmp/model.onnx").strip()
 
+# Debug de variables (se mostrará en logs de Vercel)
+print(f"DEBUG - BLOB_PUBLIC_BASE_URL: {'configurada' if BLOB_PUBLIC_BASE_URL else 'NO CONFIGURADA'}")
+print(f"DEBUG - BLOB_PUBLIC: {'configurada' if BLOB_PUBLIC else 'NO CONFIGURADA'}")
+print(f"DEBUG - MODEL_BLOB_URL: {'configurada' if MODEL_BLOB_URL else 'NO CONFIGURADA'}")
+print(f"DEBUG - BLOB_MODEL_PATH: {BLOB_MODEL_PATH}")
+
+# Usar BLOB_PUBLIC si BLOB_PUBLIC_BASE_URL no está configurada
+if not BLOB_PUBLIC_BASE_URL and BLOB_PUBLIC:
+    BLOB_PUBLIC_BASE_URL = BLOB_PUBLIC
+    print("DEBUG - Usando BLOB_PUBLIC como BLOB_PUBLIC_BASE_URL")
+
+# Construir URL si no está definida directamente
 if not MODEL_BLOB_URL and BLOB_PUBLIC_BASE_URL:
     MODEL_BLOB_URL = build_public_url(BLOB_PUBLIC_BASE_URL, BLOB_MODEL_PATH)
+    print(f"DEBUG - URL construida: {MODEL_BLOB_URL[:50]}...")
 
 # Variable global para almacenar la sesión ONNX
 ort_session = None
@@ -47,7 +62,16 @@ def load_model():
     try:
         print("Cargando modelo ONNX...")
         if not MODEL_BLOB_URL:
-            raise ValueError("MODEL_BLOB_URL no está configurada. Define BLOB_PUBLIC_BASE_URL o MODEL_BLOB_URL.")
+            error_msg = (
+                "❌ ERROR: No se puede cargar el modelo. Falta configuración.\n"
+                "\nEn Vercel, configura UNA de estas variables de entorno:\n"
+                "  1. MODEL_BLOB_URL = tu-url-completa-del-blob\n"
+                "  2. BLOB_PUBLIC_BASE_URL (o BLOB_PUBLIC) = https://xxx.public.blob.vercel-storage.com\n"
+                "\nEjemplo MODEL_BLOB_URL:\n"
+                "  https://abc123.public.blob.vercel-storage.com/model.onnx\n"
+                "\nVerifica en: Vercel Dashboard → Tu Proyecto → Settings → Environment Variables"
+            )
+            raise ValueError(error_msg)
 
         blob_storage = get_blob_storage()
         blob_content = blob_storage.download_file(MODEL_BLOB_URL)
